@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Private, offline FFXIV PvP season tracker: series rewards, Crystalline Conflict rank notes, win tallies, mood log, and a season-end countdown.">
+<title>FFXIV PvP Season Tracker</title>
+<style>
+  :root {
+    --bg: #14161c;
+    --panel: #1d2028;
+    --panel-2: #232733;
+    --border: #323846;
+    --text: #e8eaf0;
+    --muted: #9aa3b5;
+    --accent: #e0a33a;
+    --accent-2: #d9534f;
+    --good: #4caf7d;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  header {
+    padding: 18px 20px 0;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.35rem; margin: 0 0 2px; }
+  h1 span { color: var(--accent); }
+  .tagline { color: var(--muted); font-size: 0.85rem; margin: 0 0 14px; }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 18px; }
+  nav button {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 14px;
+    border-radius: var(--radius) var(--radius) 0 0;
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+  nav button.active { color: var(--text); border-bottom-color: var(--accent); border-bottom-width: 3px; font-weight: 600; }
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+  section { display: none; }
+  section.active { display: block; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 16px;
+  }
+  .card h2 { font-size: 1.05rem; margin: 0 0 10px; }
+  .card h3 { font-size: 0.95rem; margin: 14px 0 6px; }
+  .big {
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1.1;
+  }
+  .big.urgent { color: var(--accent-2); }
+  .big.past { color: var(--muted); }
+  .muted { color: var(--muted); font-size: 0.87rem; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row > * { flex: 0 0 auto; }
+  .grow { flex: 1 1 auto; }
+  input[type="date"], input[type="number"], input[type="text"], textarea, select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font: inherit;
+  }
+  textarea { width: 100%; min-height: 74px; resize: vertical; }
+  button {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px 12px;
+    cursor: pointer;
+    font: inherit;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+  button.danger { color: #ff9b96; border-color: #6b3a37; }
+  button.small { padding: 3px 9px; font-size: 0.82rem; }
+  ul.clean { list-style: none; margin: 0; padding: 0; }
+  ul.clean li {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  ul.clean li:last-child { border-bottom: none; }
+  .badge {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  .badge.done { color: var(--good); border-color: #2c5c44; }
+  .badge.urgent { color: #ff9b96; border-color: #6b3a37; }
+  .progress {
+    background: var(--panel-2);
+    border-radius: 999px;
+    height: 10px;
+    overflow: hidden;
+    margin: 6px 0;
+  }
+  .progress > div {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.2s ease;
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.82rem; }
+  td.num, th.num { text-align: right; }
+  .checklist input[type="checkbox"] { accent-color: var(--accent); transform: scale(1.2); }
+  .checklist label { flex: 1 1 auto; cursor: pointer; }
+  .checklist .lvl { color: var(--accent); font-weight: 700; min-width: 34px; }
+  .checklist input.rankname {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text);
+    padding: 3px 6px;
+    width: 100%;
+  }
+  .checklist input.rankname:hover, .checklist input.rankname:focus { border-color: var(--border); background: var(--panel-2); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  .flash {
+    position: fixed;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: #1a1a1a;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+    z-index: 10;
+  }
+  .flash.show { opacity: 1; }
+  footer { max-width: 960px; margin: 0 auto; padding: 0 20px 30px; color: var(--muted); font-size: 0.8rem; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>FFXIV PvP <span>Season Tracker</span></h1>
+  <p class="tagline">Private by design — everything stays in this browser's localStorage. No accounts, no servers, no tracking.</p>
+  <nav id="tabs">
+    <button data-tab="overview" class="active">Overview</button>
+    <button data-tab="series">Series &amp; Rewards</button>
+    <button data-tab="ranks">Crystalline Conflict</button>
+    <button data-tab="wins">Win Tallies</button>
+    <button data-tab="mood">Mood Log</button>
+    <button data-tab="data">Data</button>
+  </nav>
+</header>
+
+<main>
+  <section id="tab-overview" class="active">
+    <div class="card">
+      <h2>Season countdown</h2>
+      <div class="big" id="ov-countdown">—</div>
+      <div class="muted" id="ov-countdown-sub">Set your season end date in this section to start the countdown.</div>
+      <div class="row" style="margin-top:10px">
+        <label for="ov-end">Season ends on</label>
+        <input type="date" id="ov-end">
+      </div>
+    </div>
+    <div class="card">
+      <h2>What to finish before the season ends</h2>
+      <div id="ov-finish"></div>
+    </div>
+    <div class="card">
+      <h2>Series status</h2>
+      <div class="progress"><div id="ov-series-bar" style="width:0%"></div></div>
+      <div class="muted" id="ov-series-sub">—</div>
+    </div>
+    <div class="card">
+      <h2>Weekly wins</h2>
+      <div class="big" id="ov-week-wins">0</div>
+      <div class="muted" id="ov-week-sub">—</div>
+      <div class="progress"><div id="ov-week-bar" style="width:0%"></div></div>
+    </div>
+  </section>
+
+  <section id="tab-series">
+    <div class="card">
+      <h2>Current series level</h2>
+      <div class="row">
+        <label for="series-level">Level (1–30)</label>
+        <input type="number" id="series-level" min="1" max="30" step="1">
+        <button id="series-save" class="primary">Save level</button>
+        <span class="muted">Saving a level logs the change so the tracker can estimate your pace.</span>
+      </div>
+      <div class="muted" id="series-pace" style="margin-top:10px">—</div>
+    </div>
+    <div class="card">
+      <h2>Reward checklist</h2>
+      <p class="muted">Series reward items change every season, so these names are an editable template — click a name and type the real one. Check items off once claimed.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button id="rewards-open-first" class="small">Show next unchecked</button>
+        <button id="rewards-uncheck-all" class="small danger">Clear all checkmarks</button>
+      </div>
+      <ul class="clean checklist" id="rewards-list"></ul>
+    </div>
+  </section>
+
+  <section id="tab-ranks">
+    <div class="card">
+      <h2>Crystalline Conflict rank</h2>
+      <div class="row">
+        <label for="rank-current">Current rank</label>
+        <input type="text" id="rank-current" placeholder="e.g. Gold 3">
+        <span class="muted">Bronze • Silver • Gold • Platinum • Diamond • Crystal</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Rank notes per role</h2>
+      <p class="muted">Your own climbing notes — builds, common mistakes to avoid, matchup reminders. Saved locally, never synced.</p>
+      <div class="grid2" id="role-notes"></div>
+    </div>
+  </section>
+
+  <section id="tab-wins">
+    <div class="card">
+      <h2>Today</h2>
+      <div class="row">
+        <button id="win-plus" class="primary">+1 PvP win today</button>
+        <button id="win-minus" class="danger">−1</button>
+        <div class="big" style="font-size:1.6rem" id="wins-today">0</div>
+        <span class="muted" id="wins-today-goal"></span>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <label for="goal-daily">Daily goal</label>
+        <input type="number" id="goal-daily" min="0" step="1" style="width:80px">
+        <label for="goal-weekly">Weekly goal</label>
+        <input type="number" id="goal-weekly" min="0" step="1" style="width:80px">
+      </div>
+    </div>
+    <div class="card">
+      <h2>Recent days</h2>
+      <ul class="clean" id="wins-days"></ul>
+    </div>
+    <div class="card">
+      <h2>Weeks (Mon–Sun)</h2>
+      <table>
+        <thead><tr><th>Week of</th><th class="num">Wins</th><th class="num">Goal</th></tr></thead>
+        <tbody id="wins-weeks"></tbody>
+      </table>
+      <p class="muted">Weeks run Monday–Sunday in this tracker, so totals group cleanly regardless of the in-game reset time.</p>
+    </div>
+  </section>
+
+  <section id="tab-mood">
+    <div class="card">
+      <h2>Log how a session felt</h2>
+      <div class="row" style="margin-bottom:10px">
+        <label for="mood-select">Mood</label>
+        <select id="mood-select">
+          <option value="Great">Great</option>
+          <option value="Good" selected>Good</option>
+          <option value="Mixed">Mixed</option>
+          <option value="Tilted">Tilted</option>
+          <option value="Rough">Rough</option>
+        </select>
+        <input type="text" id="mood-note" class="grow" placeholder="Optional note — what happened in that match?">
+        <button id="mood-add" class="primary">Log mood</button>
+      </div>
+      <p class="muted">A quick pattern detector: if the last few entries are Tilted or Rough, it may be a good night for a break (or a novice boot camp) instead of Crystal.</p>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom: 2px">Recent entries</h2>
+      <div class="muted" id="mood-trend" style="margin-bottom:6px"></div>
+      <ul class="clean" id="mood-list"></ul>
+    </div>
+  </section>
+
+  <section id="tab-data">
+    <div class="card">
+      <h2>Backup</h2>
+      <p class="muted">Everything lives in localStorage. Export a JSON snapshot before clearing browser data or switching computers.</p>
+      <div class="row">
+        <button id="data-export" class="primary">Export JSON backup</button>
+        <input type="file" id="data-import-file" accept=".json,application/json" hidden>
+        <button id="data-import" type="button">Import backup</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Reset</h2>
+      <div class="row">
+        <button id="data-new-season" class="danger">Start a new season</button>
+        <button id="data-clear" class="danger">Delete all data</button>
+        <span class="muted">Both ask for confirmation. Start-a-new-season keeps win tallies and mood log; delete-all wipes everything.</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Privacy</h2>
+      <p class="muted">This app has no network calls of any kind. Data is stored only in this browser under the key <code>ffxiv-pvp-tracker-v1</code>. Final Fantasy XIV and Crystalline Conflict are trademarks of Square Enix; this is an unofficial fan tool and is not affiliated with or endorsed by Square Enix.</p>
+    </div>
+  </section>
+</main>
+
+<div class="flash" id="flash"></div>
+
+<footer>FFXIV PvP Season Tracker — an open-source tool by Asdale Dynamics, LLC. Runs entirely offline from this single file.</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  function todayISO(d) {
+    var dt = d || new Date();
+    return dt.getFullYear() + "-" +
+      String(dt.getMonth() + 1).padStart(2, "0") + "-" +
+      String(dt.getDate()).padStart(2, "0");
+  }
+
+  function parseISO(s) {
+    if (typeof s !== "string") return null;
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (!m) return null;
+    var y = Number(m[1]), mo = Number(m[2]), da = Number(m[3]);
+    if (mo < 1 || mo > 12 || da < 1 || da > 31) return null;
+    return { y: y, m: mo, d: da };
+  }
+
+  function ts(s) {
+    var p = parseISO(s);
+    return p ? Date.UTC(p.y, p.m - 1, p.d) : null;
+  }
+
+  function diffDays(fromISO, toISO) {
+    var a = ts(fromISO), b = ts(toISO);
+    if (a === null || b === null) return null;
+    return Math.round((b - a) / 86400000);
+  }
+
+  function addDays(iso, n) {
+    var t = ts(iso);
+    if (t === null) return null;
+    var d = new Date(t + n * 86400000);
+    return d.getUTCFullYear() + "-" +
+      String(d.getUTCMonth() + 1).padStart(2, "0") + "-" +
+      String(d.getUTCDate()).padStart(2, "0");
+  }
+
+  function seasonEndStatus(endISO, today) {
+    if (!endISO || parseISO(endISO) === null) {
+      return { configured: false, daysLeft: null, isPast: false, isToday: false };
+    }
+    var d = diffDays(today || todayISO(), endISO);
+    return { configured: true, daysLeft: d, isPast: d < 0, isToday: d === 0 };
+  }
+
+  function weekStartOf(iso) {
+    var t = ts(iso);
+    if (t === null) return null;
+    var day = new Date(t).getUTCDay();
+    return addDays(iso, -((day + 6) % 7));
+  }
+
+  function tallyWins(wins, fromISO, toISO) {
+    var from = ts(fromISO), to = ts(toISO);
+    if (from === null || to === null) return 0;
+    var total = 0;
+    for (var i = 0; i < wins.length; i++) {
+      var w = wins[i];
+      if (!w || typeof w.count !== "number" || w.count < 0) continue;
+      var t = ts(w.date);
+      if (t === null) continue;
+      if (t >= from && t <= to) total += w.count;
+    }
+    return total;
+  }
+
+  function addWin(wins, dateISO, delta) {
+    var t = ts(dateISO);
+    if (t === null) return wins.slice();
+    var out = [], found = false;
+    for (var i = 0; i < wins.length; i++) {
+      var w = wins[i];
+      if (ts(w.date) === t) {
+        found = true;
+        var c = (typeof w.count === "number" ? w.count : 0) + delta;
+        if (c > 0) out.push({ date: dateISO, count: c });
+      } else {
+        out.push(w);
+      }
+    }
+    if (!found && delta > 0) out.push({ date: dateISO, count: delta });
+    return out;
+  }
+
+  function weeklyTotals(wins, refISO, weeks) {
+    var n = weeks || 6;
+    var start = weekStartOf(refISO);
+    if (start === null) return [];
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var ws = addDays(start, -7 * i);
+      out.push({ start: ws, total: tallyWins(wins, ws, addDays(ws, 6)) });
+    }
+    return out;
+  }
+
+  function rewardTemplate() {
+    return [
+      { level: 2, name: "PvP EXP bundle", done: false },
+      { level: 4, name: "PvP EXP bundle", done: false },
+      { level: 6, name: "Series weapon glamour", done: false },
+      { level: 8, name: "PvP EXP bundle", done: false },
+      { level: 10, name: "Series emote", done: false },
+      { level: 12, name: "Series mount", done: false },
+      { level: 14, name: "PvP EXP bundle", done: false },
+      { level: 16, name: "Series armor set", done: false },
+      { level: 18, name: "PvP EXP bundle", done: false },
+      { level: 20, name: "Series accessory set", done: false },
+      { level: 22, name: "PvP EXP bundle", done: false },
+      { level: 24, name: "Series barding", done: false },
+      { level: 26, name: "PvP EXP bundle", done: false },
+      { level: 28, name: "Second series emote", done: false },
+      { level: 30, name: "Grand series reward", done: false }
+    ];
+  }
+
+  function rewardsRemaining(level, rewards) {
+    return rewards
+      .filter(function (r) { return r && !r.done && r.level > level; })
+      .sort(function (a, b) { return a.level - b.level; });
+  }
+
+  function setSeriesLevel(data, level) {
+    var clamped = Math.min(30, Math.max(1, Math.floor(level)));
+    var prev = data.seriesLevel || 1;
+    if (clamped === prev) return data;
+    data.seriesLevel = clamped;
+    var today = todayISO();
+    var log = data.seriesLog || [];
+    log.push({ date: today, from: prev, to: clamped, delta: clamped - prev });
+    data.seriesLog = log;
+    return data;
+  }
+
+  function pacePerDay(seriesLog, today, windowDays) {
+    var win = windowDays || 7;
+    var cutoff = addDays(today, -win);
+    var t = ts(cutoff);
+    var gained = 0, earliest = null;
+    var entries = seriesLog || [];
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      var dt = ts(e.date);
+      if (dt === null) continue;
+      if (dt >= t) {
+        if (earliest === null || dt < earliest) earliest = dt;
+        if (e.delta > 0) gained += e.delta;
+      }
+    }
+    if (earliest === null) return 0;
+    var elapsed = Math.round(((ts(today)) - earliest) / 86400000) + 1;
+    var span = Math.min(Math.max(elapsed, 1), win);
+    return gained / span;
+  }
+
+  function estimateDaysToLevel(level, targetLevel, pace) {
+    var needed = targetLevel - level;
+    if (needed <= 0) return 0;
+    if (!pace || pace <= 0) return null;
+    return Math.ceil(needed / pace);
+  }
+
+  function moodTrend(moods) {
+    var worth = { Great: 2, Good: 1, Mixed: 0, Tilted: -1, Rough: -2 };
+    var last = (moods || []).slice(-3).filter(function (m) {
+      return m && Object.prototype.hasOwnProperty.call(worth, m.mood);
+    });
+    if (last.length === 0) return { label: "", shouldRest: false };
+    var sum = 0;
+    for (var i = 0; i < last.length; i++) sum += worth[last[i].mood];
+    var avg = sum / last.length;
+    var label;
+    if (avg >= 1.5) label = "Feeling strong lately.";
+    else if (avg >= 0.5) label = "Solid sessions lately.";
+    else if (avg > -0.5) label = "Mixed results lately.";
+    else label = "Rough stretch lately — consider a breather next session.";
+    return { label: label, shouldRest: avg <= -0.5 };
+  }
+
+  window.PvpCore = {
+    todayISO: todayISO,
+    parseISO: parseISO,
+    diffDays: diffDays,
+    addDays: addDays,
+    seasonEndStatus: seasonEndStatus,
+    weekStartOf: weekStartOf,
+    tallyWins: tallyWins,
+    addWin: addWin,
+    weeklyTotals: weeklyTotals,
+    rewardTemplate: rewardTemplate,
+    rewardsRemaining: rewardsRemaining,
+    setSeriesLevel: setSeriesLevel,
+    pacePerDay: pacePerDay,
+    estimateDaysToLevel: estimateDaysToLevel,
+    moodTrend: moodTrend
+  };
+})();
+</script>
+
+<script>
+(function () {
+  "use strict";
+  var C = window.PvpCore;
+  var KEY = "ffxiv-pvp-tracker-v1";
+  var ROLES = ["Tank", "Healer", "Melee DPS", "Ranged DPS", "Caster DPS"];
+
+  function defaults() {
+    return {
+      seasonEnd: "",
+      seriesLevel: 1,
+      seriesLog: [],
+      rewards: C.rewardTemplate(),
+      rank: "",
+      roleNotes: {},
+      wins: [],
+      goalDaily: 3,
+      goalWeekly: 15,
+      moods: []
+    };
+  }
+
+  var state = null;
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) {
+        var parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          state = Object.assign(defaults(), parsed);
+          return;
+        }
+      }
+    } catch (e) {}
+    state = defaults();
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch (e) {
+      flash("Could not save — storage may be full or blocked.");
+    }
+  }
+
+  function $(id) { return document.getElementById(id); }
+
+  function flash(msg) {
+    var f = $("flash");
+    f.textContent = msg;
+    f.classList.add("show");
+    clearTimeout(flash.timer);
+    flash.timer = setTimeout(function () { f.classList.remove("show"); }, 2200);
+  }
+
+  function el(tag, attrs, text) {
+    var e = document.createElement(tag);
+    if (attrs) {
+      for (var k in attrs) {
+        if (k === "class") e.className = attrs[k];
+        else e.setAttribute(k, attrs[k]);
+      }
+    }
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+
+  function tabsInit() {
+    var nav = $("tabs");
+    nav.addEventListener("click", function (ev) {
+      var btn = ev.target.closest("button[data-tab]");
+      if (!btn) return;
+      var id = btn.getAttribute("data-tab");
+      var all = nav.querySelectorAll("button");
+      for (var i = 0; i < all.length; i++) all[i].classList.remove("active");
+      btn.classList.add("active");
+      var secs = document.querySelectorAll("main section");
+      for (var j = 0; j < secs.length; j++) secs[j].classList.remove("active");
+      $("tab-" + id).classList.add("active");
+      render(id);
+    });
+  }
+
+  function countdownText(daysLeft) {
+    if (daysLeft === null) return "";
+    if (daysLeft < 0) return Math.abs(daysLeft) + (Math.abs(daysLeft) === 1 ? " day ago" : " days ago");
+    if (daysLeft === 0) return "Ends today";
+    if (daysLeft === 1) return "1 day left";
+    return daysLeft + " days left";
+  }
+
+  function renderCountdown() {
+    $("ov-end").value = state.seasonEnd || "";
+    var st = C.seasonEndStatus(state.seasonEnd, C.todayISO());
+    var big = $("ov-countdown"), sub = $("ov-countdown-sub");
+    big.className = "big";
+    if (!st.configured) {
+      big.textContent = "—";
+      sub.textContent = "Set your season end date below to start the countdown.";
+      return;
+    }
+    if (st.isPast) {
+      big.classList.add("past");
+      big.textContent = countdownText(st.daysLeft);
+      sub.textContent = "That season has ended. Consider “Start a new season” in the Data tab.";
+      return;
+    }
+    if (st.isToday) {
+      big.textContent = countdownText(st.daysLeft);
+      sub.textContent = "Season end is today — last chance to claim rewards (" + state.seasonEnd + ").";
+      return;
+    }
+    if (st.daysLeft <= 7) big.classList.add("urgent");
+    big.textContent = countdownText(st.daysLeft);
+    sub.textContent = "Season ends " + state.seasonEnd + ".";
+  }
+
+  function renderFinishList() {
+    var box = $("ov-finish");
+    box.innerHTML = "";
+    var st = C.seasonEndStatus(state.seasonEnd, C.todayISO());
+    var items = [];
+
+    var remaining = C.rewardsRemaining(state.seriesLevel, state.rewards);
+    var pace = C.pacePerDay(state.seriesLog, C.todayISO(), 7);
+    if (remaining.length > 0) {
+      items.push({
+        text: remaining.length + " unclaimed reward" + (remaining.length === 1 ? "" : "s") + " left (highest at series level " + remaining[remaining.length - 1].level + ")",
+        badge: "priority"
+      });
+    } else if (state.seriesLevel >= 30) {
+      items.push({ text: "Series maxed at level 30 — everything unlocked.", badge: "done" });
+    } else {
+      items.push({ text: "All reachable rewards checked off — fill in the rest as levels go up.", badge: "done" });
+    }
+    var next = remaining[0];
+    if (next) {
+      remaining.slice(0, 5).forEach(function (r) {
+        var est = C.estimateDaysToLevel(state.seriesLevel, r.level, pace);
+        var note;
+        if (est === 0) note = "reachable now";
+        else if (est === null) note = "log series levels to estimate";
+        else note = "~" + est + (est === 1 ? " day" : " days") + " at recent pace";
+        if (st.configured && est !== null && est > st.daysLeft) note = "needs ~" + est + " days of pace but only " + st.daysLeft + " left";
+        items.push({ text: "Series level " + r.level + " — " + r.name, badge: note, urgent: st.configured && est !== null && est > st.daysLeft });
+      });
+      if (remaining.length > 5) {
+        items.push({ text: "…and " + (remaining.length - 5) + " more after that", badge: "see checklist" });
+      }
+    }
+    var wk = C.weeklyTotals(state.wins, C.todayISO(), 1)[0];
+    if (state.goalWeekly > 0) {
+      var left = Math.max(0, state.goalWeekly - wk.total);
+      items.push({ text: left + " win" + (left === 1 ? "" : "s") + " left toward this week's win goal", badge: left === 0 ? "done" : "goal " + state.goalWeekly });
+    }
+    if (!st.configured) {
+      var p = el("div", { class: "muted" }, "Add a season end date to see deadlines here.");
+      box.appendChild(p);
+    }
+    if (items.length === 0 && st.configured) {
+      box.appendChild(el("div", { class: "muted" }, "Nothing pending — rewards claimed!"));
+    }
+    var ul = el("ul", { class: "clean" });
+    for (var k = 0; k < items.length; k++) {
+      var li = el("li");
+      li.appendChild(el("span", { class: "grow" }, items[k].text));
+      var b = el("span", { class: "badge" }, items[k].badge);
+      if (items[k].badge === "done") b.classList.add("done");
+      else if (items[k].urgent) b.classList.add("urgent");
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+    box.appendChild(ul);
+  }
+
+  function renderSeriesOverview() {
+    var bar = $("ov-series-bar"), sub = $("ov-series-sub");
+    var lvl = state.seriesLevel || 1;
+    bar.style.width = Math.round((lvl / 30) * 100) + "%";
+    var pace = C.pacePerDay(state.seriesLog, C.todayISO(), 7);
+    var remaining = C.rewardsRemaining(lvl, state.rewards);
+    sub.textContent = "Level " + lvl + " of 30 • " + remaining.length + " reward" + (remaining.length === 1 ? "" : "s") + " unclaimed • " +
+      (pace > 0 ? pace.toFixed(2) + " levels/day recently" : "log a level change to estimate pace");
+  }
+
+  function renderWinsOverview() {
+    var wk = C.weeklyTotals(state.wins, C.todayISO(), 1)[0];
+    $("ov-week-wins").textContent = wk.total;
+    var goal = state.goalWeekly;
+    $("ov-week-sub").textContent = goal > 0 ? "of your " + goal + " weekly goal (week starting " + wk.start + ")" : "this week (starts " + wk.start + ") — no goal set";
+    $("ov-week-bar").style.width = goal > 0 ? Math.min(100, Math.round((wk.total / goal) * 100)) + "%" : "0%";
+  }
+
+  function renderSeriesTab() {
+    $("series-level").value = state.seriesLevel;
+    var pace = C.pacePerDay(state.seriesLog, C.todayISO(), 7);
+    $("series-pace").textContent = pace > 0
+      ? "Recent pace: " + pace.toFixed(2) + " levels/day (last 7 days) → " + (Math.ceil((30 - state.seriesLevel) / pace)) + " days to level 30 at this rate."
+      : "Log a level change (save a new level) to start pacing estimates.";
+    renderRewardsList();
+  }
+
+  function renderRewardsList() {
+    var ul = $("rewards-list");
+    ul.innerHTML = "";
+    state.rewards.slice().sort(function (a, b) { return a.level - b.level; }).forEach(function (r, idx) {
+      var sortedIdx = state.rewards.indexOf(r);
+      var li = el("li");
+      li.appendChild(el("span", { class: "lvl" }, String(r.level)));
+      var cb = el("input", { type: "checkbox" });
+      cb.checked = !!r.done;
+      cb.setAttribute("aria-label", "Claimed: " + r.name);
+      cb.addEventListener("change", function () {
+        state.rewards[sortedIdx].done = cb.checked;
+        save();
+        renderAll();
+      });
+      li.appendChild(cb);
+      var input = el("input", { type: "text", class: "rankname", value: r.name });
+      input.setAttribute("aria-label", "Reward name for level " + r.level);
+      input.addEventListener("change", function () {
+        state.rewards[sortedIdx].name = input.value;
+        save();
+      });
+      li.appendChild(input);
+      ul.appendChild(li);
+    });
+  }
+
+  function renderRanksTab() {
+    $("rank-current").value = state.rank || "";
+    var grid = $("role-notes");
+    grid.innerHTML = "";
+    ROLES.forEach(function (role) {
+      var card = el("div", { class: "card", style: "margin:0 0 0 0" });
+      card.appendChild(el("h3", null, role));
+      var ta = el("textarea");
+      ta.value = state.roleNotes[role] || "";
+      ta.placeholder = "Builds, job tips, mistakes to avoid, win conditions…";
+      ta.setAttribute("aria-label", role + " notes");
+      ta.addEventListener("change", function () {
+        state.roleNotes[role] = ta.value;
+        save();
+      });
+      card.appendChild(ta);
+      grid.appendChild(card);
+    });
+  }
+
+  function renderWinsDays() {
+    var ul = $("wins-days");
+    ul.innerHTML = "";
+    var today = C.todayISO();
+    for (var i = 6; i >= 0; i--) {
+      (function () {
+        var date = C.addDays(today, -i);
+        var entry = state.wins.find(function (w) { return w.date === date; });
+        var count = entry ? entry.count : 0;
+        var li = el("li");
+        var label = i === 0 ? "Today" : date;
+        li.appendChild(el("span", { class: "grow" }, label));
+        li.appendChild(el("span", { class: "badge" }, count + " win" + (count === 1 ? "" : "s")));
+        (function (d) {
+          var plus = el("button", { class: "small" }, "+");
+          plus.setAttribute("aria-label", "Add win on " + d);
+          plus.addEventListener("click", function () { bumpWin(d, 1); });
+          var minus = el("button", { class: "small danger" }, "−");
+          minus.setAttribute("aria-label", "Remove win on " + d);
+          minus.addEventListener("click", function () { bumpWin(d, -1); });
+          li.appendChild(plus);
+          li.appendChild(minus);
+        })(date);
+        ul.appendChild(li);
+      })();
+    }
+  }
+
+  function bumpWin(date, delta) {
+    state.wins = C.addWin(state.wins, date, delta);
+    save();
+    renderAll();
+  }
+
+  function renderWinsWeeks() {
+    var tbody = $("wins-weeks");
+    tbody.innerHTML = "";
+    var weeks = C.weeklyTotals(state.wins, C.todayISO(), 6);
+    weeks.forEach(function (w) {
+      var tr = el("tr");
+      tr.appendChild(el("td", null, w.start));
+      var tdW = el("td", { class: "num" }, String(w.total));
+      tr.appendChild(tdW);
+      tr.appendChild(el("td", { class: "num" }, state.goalWeekly > 0 ? String(state.goalWeekly) : "—"));
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderWinsTab() {
+    var today = C.todayISO();
+    var entry = state.wins.find(function (w) { return w.date === today; });
+    $("wins-today").textContent = entry ? entry.count : 0;
+    $("wins-today-goal").textContent = state.goalDaily > 0 ? "goal " + state.goalDaily + "/day" : "";
+    $("goal-daily").value = state.goalDaily;
+    $("goal-weekly").value = state.goalWeekly;
+    renderWinsDays();
+    renderWinsWeeks();
+  }
+
+  function renderMoodTab() {
+    var list = $("mood-list");
+    list.innerHTML = "";
+    var moods = state.moods || [];
+    var trend = C.moodTrend(moods);
+    $("mood-trend").textContent = trend.label;
+    moods.slice().reverse().slice(0, 20).forEach(function (m) {
+      var li = el("li");
+      li.appendChild(el("span", { class: "badge" }, m.mood));
+      li.appendChild(el("span", { class: "grow" }, m.note || ""));
+      li.appendChild(el("span", { class: "muted" }, new Date(m.ts).toLocaleString()));
+      var del = el("button", { class: "small danger" }, "Delete");
+      del.setAttribute("aria-label", "Delete mood entry");
+      del.addEventListener("click", function () {
+        var i = state.moods.indexOf(m);
+        if (i >= 0) {
+          state.moods.splice(i, 1);
+          save();
+          renderAll();
+        }
+      });
+      li.appendChild(del);
+      list.appendChild(li);
+    });
+    if (moods.length === 0) {
+      list.appendChild(el("li", null, "No mood entries yet."));
+    }
+  }
+
+  function renderDataTab() {
+    return;
+  }
+
+  function renderOverview() {
+    renderCountdown();
+    renderFinishList();
+    renderSeriesOverview();
+    renderWinsOverview();
+  }
+
+  function render(tab) {
+    if (tab === "overview") renderOverview();
+    else if (tab === "series") renderSeriesTab();
+    else if (tab === "ranks") renderRanksTab();
+    else if (tab === "wins") renderWinsTab();
+    else if (tab === "mood") renderMoodTab();
+    else if (tab === "data") renderDataTab();
+  }
+
+  function renderAll() {
+    var active = document.querySelector("nav button.active");
+    render(active ? active.getAttribute("data-tab") : "overview");
+  }
+
+  function wire() {
+    $("ov-end").addEventListener("change", function () {
+      var v = this.value;
+      if (v && !C.parseISO(v)) return;
+      state.seasonEnd = v || "";
+      save();
+      renderOverview();
+    });
+
+    $("series-save").addEventListener("click", function () {
+      var v = parseInt($("series-level").value, 10);
+      if (isNaN(v)) { flash("Enter a level from 1 to 30."); return; }
+      state = C.setSeriesLevel(state, v);
+      save();
+      $("series-level").value = state.seriesLevel;
+      renderAll();
+      flash("Series level set to " + state.seriesLevel + ".");
+    });
+
+    $("rewards-uncheck-all").addEventListener("click", function () {
+      if (!confirm("Clear every checkmark on the reward checklist? Names will be kept.")) return;
+      state.rewards.forEach(function (r) { r.done = false; });
+      save();
+      renderAll();
+    });
+
+    $("rewards-open-first").addEventListener("click", function () {
+      var remaining = C.rewardsRemaining(state.seriesLevel, state.rewards);
+      if (remaining.length === 0) { flash("All reachable rewards are checked off."); return; }
+      var first = state.rewards.find(function (r) { return r.level === remaining[0].level; });
+      var lvlInput = $("series-level");
+      document.querySelector('nav button[data-tab="series"]').click();
+      lvlInput.focus();
+      flash("Next up: level " + first.level + " — " + first.name);
+    });
+
+    $("rank-current").addEventListener("change", function () {
+      state.rank = this.value.trim();
+      save();
+    });
+
+    $("win-plus").addEventListener("click", function () { bumpWin(C.todayISO(), 1); });
+    $("win-minus").addEventListener("click", function () { bumpWin(C.todayISO(), -1); });
+
+    $("goal-daily").addEventListener("change", function () {
+      state.goalDaily = Math.max(0, parseInt(this.value, 10) || 0);
+      save();
+      renderAll();
+    });
+    $("goal-weekly").addEventListener("change", function () {
+      state.goalWeekly = Math.max(0, parseInt(this.value, 10) || 0);
+      save();
+      renderAll();
+    });
+
+    $("mood-add").addEventListener("click", function () {
+      var sel = $("mood-select");
+      var note = $("mood-note");
+      state.moods.push({ ts: Date.now(), mood: sel.value, note: note.value.trim() });
+      if (state.moods.length > 200) state.moods = state.moods.slice(-200);
+      note.value = "";
+      save();
+      renderAll();
+      flash("Logged: " + sel.value);
+    });
+
+    $("data-export").addEventListener("click", function () {
+      var blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "ffxiv-pvp-tracker-" + C.todayISO() + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(a.href);
+      flash("Backup downloaded.");
+    });
+
+    $("data-import").addEventListener("click", function () { $("data-import-file").click(); });
+    $("data-import-file").addEventListener("change", function () {
+      var file = this.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var parsed = JSON.parse(reader.result);
+          if (!parsed || typeof parsed !== "object" || !("seriesLevel" in parsed)) {
+            throw new Error("not a tracker backup");
+          }
+          state = Object.assign(defaults(), parsed);
+          save();
+          renderAll();
+          flash("Backup restored.");
+        } catch (e) {
+          flash("That file didn't look like a valid backup.");
+        }
+      };
+      reader.readAsText(file);
+      this.value = "";
+    });
+
+    $("data-new-season").addEventListener("click", function () {
+      if (!confirm("Start a new season? This clears the checklist, series level/log, and rank, but keeps win tallies and your mood log.")) return;
+      state.rewards = C.rewardTemplate();
+      state.seriesLevel = 1;
+      state.seriesLog = [];
+      state.rank = "";
+      state.seasonEnd = "";
+      save();
+      document.querySelector('nav button[data-tab="overview"]').click();
+      renderAll();
+      flash("New season started — set the end date.");
+    });
+
+    $("data-clear").addEventListener("click", function () {
+      if (!confirm("Delete ALL tracker data from this browser? This cannot be undone.")) return;
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      state = defaults();
+      renderAll();
+      document.querySelector('nav button[data-tab="overview"]').click();
+      flash("All data deleted.");
+    });
+  }
+
+  load();
+  tabsInit();
+  wire();
+  renderAll();
+})();
+</script>
+</body>
+</html>
